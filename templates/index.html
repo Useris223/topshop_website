@@ -3,18 +3,26 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Discord Turgelis</title>
+  <title>TopShop Deals</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <!-- Stars -->
-  <canvas id="stars" aria-hidden="true"></canvas>
+  <!-- Snow -->
+  <canvas id="snow" aria-hidden="true"></canvas>
 
-  <main class="center">
+  <!-- Click to enter overlay -->
+  <div class="overlay" id="overlay" role="button" tabindex="0" aria-label="Click to enter">
+    <div class="overlay-inner">
+      <div class="overlay-pill">Click to enter</div>
+      <div class="overlay-sub">Paspausk, kad įeitum</div>
+    </div>
+  </div>
+
+  <main class="center" id="main" data-hidden="true">
     <section class="card">
       <div class="brand">
-        <span class="brand-icon" aria-hidden="true"></span>
-        <span>Discord Turgelis</span>
+        <img class="avatar" id="avatar" alt="Logo" />
+        <span class="toptext">TopShop Deals</span>
       </div>
 
       <h1 class="title">
@@ -24,86 +32,134 @@
 
       <p class="desc">
         Šiuo metu svetainė yra kuriama.<br>
-        Norint užsisakyti – sukurkite ticket mūsų Discord serveryje.
+        Norint užsisakyti – susisiekite su mumis.
       </p>
 
-      <a class="btn" href="YOUR_DISCORD_INVITE" target="_blank" rel="noopener">
-        Prisijungti į Discord
+      <a class="btn" href="/" onclick="return false;">
+        Susisiekti
       </a>
     </section>
   </main>
 
   <script>
-    // Starfield (looks like screenshot)
-    const canvas = document.getElementById("stars");
+    // ---------- Avatar from URL param (?img=...) ----------
+    const params = new URLSearchParams(location.search);
+    const imgUrl = params.get("img") || "https://upload.wikimedia.org/wikipedia/commons/5/59/Empty.png";
+    const avatar = document.getElementById("avatar");
+    avatar.src = imgUrl;
+
+    // ---------- Click to enter overlay ----------
+    const overlay = document.getElementById("overlay");
+    const main = document.getElementById("main");
+
+    function enter() {
+      overlay.classList.add("hide");
+      main.dataset.hidden = "false";
+      startSnow(); // start animation only after click
+    }
+    overlay.addEventListener("click", enter);
+    overlay.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") enter();
+    });
+
+    // ---------- Snow (canvas) ----------
+    const canvas = document.getElementById("snow");
     const ctx = canvas.getContext("2d");
 
-    let w, h, stars;
+    let W = 0, H = 0, flakes = [];
+    let running = false;
 
     function resize() {
       const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-      w = canvas.width  = Math.floor(window.innerWidth  * dpr);
-      h = canvas.height = Math.floor(window.innerHeight * dpr);
+      canvas.width = Math.floor(window.innerWidth * dpr);
+      canvas.height = Math.floor(window.innerHeight * dpr);
       canvas.style.width = window.innerWidth + "px";
       canvas.style.height = window.innerHeight + "px";
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      // Rebuild stars
-      const count = Math.floor((window.innerWidth * window.innerHeight) / 9000); // ~similar density
-      stars = Array.from({ length: count }, () => ({
-        x: Math.random() * window.innerWidth,
-        y: Math.random() * window.innerHeight,
-        r: Math.random() < 0.12 ? (1.8 + Math.random()*1.6) : (0.7 + Math.random()*1.1),
-        a: 0.45 + Math.random()*0.55,
-        tw: 0.002 + Math.random()*0.006,
-        ph: Math.random()*Math.PI*2
-      }));
+      W = window.innerWidth;
+      H = window.innerHeight;
+
+      // rebuild flakes
+      const count = Math.floor((W * H) / 12000); // density
+      flakes = Array.from({ length: count }, () => makeFlake(true));
     }
 
-    function background() {
-      // gradient background like screenshot (dark blue -> darker)
-      const g = ctx.createLinearGradient(0, 0, window.innerWidth, window.innerHeight);
+    function makeFlake(initial=false) {
+      const size = 0.8 + Math.random() * 2.2; // small like screenshot
+      return {
+        x: Math.random() * W,
+        y: initial ? Math.random() * H : -10 - Math.random() * 120,
+        r: size,
+        vy: 0.6 + Math.random() * 1.6,
+        vx: -0.4 + Math.random() * 0.8,
+        a: 0.35 + Math.random() * 0.55,
+        wob: Math.random() * Math.PI * 2,
+        wobSpd: 0.003 + Math.random() * 0.01
+      };
+    }
+
+    function drawBackground() {
+      // same vibe as screenshot (dark blue gradient)
+      const g = ctx.createLinearGradient(0, 0, W, H);
       g.addColorStop(0.00, "#071c3e");
       g.addColorStop(0.35, "#061632");
       g.addColorStop(0.70, "#040a18");
       g.addColorStop(1.00, "#02040c");
       ctx.fillStyle = g;
-      ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+      ctx.fillRect(0, 0, W, H);
 
-      // soft glow on top-left (like screenshot)
-      const r = ctx.createRadialGradient(
-        window.innerWidth*0.18, window.innerHeight*0.25, 0,
-        window.innerWidth*0.18, window.innerHeight*0.25, Math.max(window.innerWidth, window.innerHeight)*0.6
-      );
+      // glow top-left
+      const r = ctx.createRadialGradient(W*0.18, H*0.25, 0, W*0.18, H*0.25, Math.max(W,H)*0.6);
       r.addColorStop(0, "rgba(60,130,255,0.22)");
       r.addColorStop(1, "rgba(60,130,255,0)");
       ctx.fillStyle = r;
-      ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+      ctx.fillRect(0, 0, W, H);
     }
 
-    function draw(t) {
-      background();
+    function step(t) {
+      if (!running) return;
 
-      // stars
-      for (const s of stars) {
-        const twinkle = 0.75 + 0.25 * Math.sin((t*s.tw) + s.ph);
-        const alpha = s.a * twinkle;
+      drawBackground();
+
+      // snow
+      for (let i = 0; i < flakes.length; i++) {
+        const f = flakes[i];
+        f.wob += f.wobSpd * (t || 0);
+        const drift = Math.sin(f.wob) * 0.4;
+
+        f.x += (f.vx + drift);
+        f.y += f.vy;
+
+        // wrap
+        if (f.y > H + 20) flakes[i] = makeFlake(false);
+        if (f.x < -30) f.x = W + 30;
+        if (f.x > W + 30) f.x = -30;
 
         ctx.beginPath();
-        ctx.fillStyle = `rgba(255,255,255,${alpha})`;
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${f.a})`;
+        ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      requestAnimationFrame(draw);
+      requestAnimationFrame(step);
+    }
+
+    function startSnow() {
+      if (running) return;
+      running = true;
+      resize();
+      requestAnimationFrame(step);
     }
 
     window.addEventListener("resize", () => {
+      if (!running) return;
       resize();
     });
 
+    // draw background even before click
     resize();
-    requestAnimationFrame(draw);
+    drawBackground();
   </script>
 </body>
 </html>
