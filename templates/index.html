@@ -19,8 +19,8 @@
     referrerpolicy="strict-origin-when-cross-origin"
   ></iframe>
 
-  <!-- New Click to Enter overlay -->
-  <div class="overlay" id="overlay" role="button" tabindex="0" aria-label="Click to enter">
+  <!-- Click to enter overlay -->
+  <div class="overlay" id="overlay" tabindex="0" role="button" aria-label="Click to enter">
     <div class="enter-wrap">
       <div class="enter-ring" aria-hidden="true"></div>
 
@@ -54,9 +54,15 @@
         Norint užsisakyti – susisiekite su mumis Discord serveryje.
       </p>
 
-      <a class="btn" href="https://discord.gg/hup2TpqkUT" target="_blank" rel="noopener">
-        Susisiekti
-      </a>
+      <div class="btnrow">
+        <a class="btn" href="https://discord.gg/hup2TpqkUT" target="_blank" rel="noopener">
+          Susisiekti
+        </a>
+
+        <a class="btn btn-ghost" href="/game">
+          Žaisti žaidimą
+        </a>
+      </div>
     </section>
   </main>
 
@@ -83,12 +89,9 @@
     const main = document.getElementById("main");
     const yt = document.getElementById("yt");
 
-    // Your YouTube video id:
-    const YT_ID = "r9xWOA_S3_g";
+    const YT_ID = "r9xWOA_S3_g"; // from your link
 
     function startMusic() {
-      // Load iframe only after user gesture => autoplay with sound is allowed more often
-      // (Still depends on browser settings, but this is the correct way.)
       yt.src =
         "https://www.youtube-nocookie.com/embed/" + YT_ID +
         "?autoplay=1&mute=0&controls=0&loop=1&playlist=" + YT_ID +
@@ -132,14 +135,14 @@
     }
 
     function makeFlake(initial=false) {
-      const size = 0.9 + Math.random() * 2.6;
+      const size = 0.9 + Math.random() * 2.8;
       return {
         x: Math.random() * W,
-        y: initial ? Math.random() * H : -10 - Math.random() * 140,
+        y: initial ? Math.random() * H : -10 - Math.random() * 150,
         r: size,
-        vy: 0.65 + Math.random() * 1.9,
+        vy: 0.75 + Math.random() * 2.0,
         vx: -0.35 + Math.random() * 0.7,
-        a: 0.25 + Math.random() * 0.65,
+        a: 0.22 + Math.random() * 0.68,
         wob: Math.random() * Math.PI * 2,
         wobSpd: 0.004 + Math.random() * 0.012
       };
@@ -163,6 +166,7 @@
 
     function step(t) {
       if (!running) return;
+
       drawBackground();
 
       for (let i = 0; i < flakes.length; i++) {

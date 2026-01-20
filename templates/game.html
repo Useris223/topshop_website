@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="lt">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TopShop Deals – Žaidimas</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <!-- Background snow -->
+  <canvas id="snow" aria-hidden="true"></canvas>
+
+  <main class="center" style="z-index:1;">
+    <section class="card" style="padding:18px; text-align:left;">
+      <div class="gamebar">
+        <div class="stats">
+          <div>Score: <b id="score">0</b></div>
+          <div>Lives: <b id="lives">3</b></div>
+          <div>Best: <b id="best">0</b></div>
+        </div>
+
+        <div class="actions">
+          <button class="mini" id="restart" type="button">Restart</button>
+          <a class="mini" href="/">Atgal</a>
+        </div>
+      </div>
+
+      <canvas id="game" class="gamecanvas"></canvas>
+      <div class="gamehint">Judink pelę / pirštą – pagauk coin, venk bomb. Kuo ilgiau išgyveni, tuo greičiau krenta.</div>
+    </section>
+  </main>
+
+  <script>
+    // --- Snow background (light) ---
+    const snow = document.getElementById("snow");
+    const sctx = snow.getContext("2d");
+    let SW=0, SH=0, sflakes=[], srun=true;
+
+    function sresize(){
+      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      snow.width = Math.floor(window.innerWidth * dpr);
+      snow.height = Math.floor(window.innerHeight * dpr);
+      snow.style.width = window.innerWidth + "px";
+      snow.style.height = window.innerHeight + "px";
+      sctx.setTransform(dpr,0,0,dpr,0,0);
+      SW = window.innerWidth; SH = window.innerHeight;
+      const count = Math.floor((SW*SH)/16000);
+      sflakes = Array.from({length:count}, ()=>({
+        x: Math.random()*SW, y: Math.random()*SH,
+        r: 0.8+Math.random()*2.1,
+        vy: 0.5+Math.random()*1.3,
+        a: 0.18+Math.random()*0.35
+      }));
+    }
+
+    function sdraw(){
+      const g = sctx.createLinearGradient(0,0,SW,SH);
+      g.addColorStop(0,"#071c3e");
+      g.addColorStop(1,"#02040c");
+      sctx.fillStyle=g; sctx.fillRect(0,0,SW,SH);
+
+      const glow = sctx.createRadialGradient(SW*0.18, SH*0.25, 0, SW*0.18, SH*0.25, Math.max(SW,SH)*0.6);
+      glow.addColorStop(0, "rgba(60,130,255,0.18)");
+      glow.addColorStop(1, "rgba(60,130,255,0)");
+      sctx.fillStyle = glow;
+      sctx.fillRect(0,0,SW,SH);
+
+      for(const f of sflakes){
+        f.y += f.vy;
+        if(f.y>SH+10){ f.y = -10; f.x = Math.random()*SW; }
+        sctx.beginPath();
+        sctx.fillStyle = `rgba(255,255,255,${f.a})`;
+        sctx.arc(f.x,f.y,f.r,0,Math.PI*2);
+        sctx.fill();
+      }
+      if(srun) requestAnimationFrame(sdraw);
+    }
+
+    window.addEventListener("resize", sresize);
+    sresize(); requestAnimationFrame(sdraw);
+
+    // --- Game ---
+    const c = document.getElementById("game");
+    const ctx = c.getContext("2d");
+
+    let W=0, H=0;
+    let player = { x: 0, y: 0, r: 18 };
+    let items = [];
+    let score = 0;
+    let lives = 3;
+    let best = Number(localStorage.getItem("bestScore") || "0");
+
+    const scoreEl = document.getElementById("score");
+    const livesEl = document.getElementById("lives");
+    const bestEl = document.getElementById("best");
+    bestEl.textContent = best;
+
+    let lastSpawn = 0;
+    let spawnEvery = 520; // ms (will get harder)
+    let speedBoost = 0;
+
+    function resize(){
+      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      const rect = c.getBoundingClientRect();
+      c.width = Math.floor(rect.width * dpr);
+      c.height = Math.floor(rect.height * dpr);
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+      W = rect.width; H = rect.height;
+      if(!player.x && !player.y){ player.x = W/2; player.y = H*0.8; }
+    }
+
+    function reset(){
+      score = 0; lives = 3;
+      items = [];
+      lastSpawn = 0;
+      spawnEvery = 520;
+      speedBoost = 0;
+      scoreEl.textContent = score;
+      livesEl.textContent = lives;
+    }
+
+    function spawn(){
+      const isBomb = Math.random() < 0.28;
+      items.push({
+        x: 24 + Math.random()*(W-48),
+        y: -24,
+        r: isBomb ? (14 + Math.random()*8) : (10 + Math.random()*8),
+        vy: (isBomb ? 2.8 : 2.2) + Math.random()*1.6 + speedBoost,
+        bomb: isBomb
+      });
+    }
+
+    function dist(ax, ay, bx, by){
+      const dx = ax - bx, dy = ay - by;
+      return Math.hypot(dx, dy);
+    }
+
+    function drawBackdrop(){
+      // subtle inner glow
+      const g = ctx.createRadialGradient(W*0.5, H*0.2, 0, W*0.5, H*0.2, Math.max(W,H)*0.9);
+      g.addColorStop(0,"rgba(60,130,255,0.12)");
+      g.addColorStop(1,"rgba(0,0,0,0)");
+      ctx.fillStyle = "rgba(0,0,0,0.18)";
+      ctx.fillRect(0,0,W,H);
+      ctx.fillStyle = g;
+      ctx.fillRect(0,0,W,H);
+    }
+
+    function drawPlayer(){
+      ctx.beginPath();
+      ctx.fillStyle = "rgba(255,255,255,0.92)";
+      ctx.arc(player.x, player.y, player.r, 0, Math.PI*2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.18)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    function drawItem(it){
+      ctx.beginPath();
+      ctx.fillStyle = it.bomb ? "rgba(255,90,90,0.88)" : "rgba(255,210,80,0.92)";
+      ctx.arc(it.x, it.y, it.r, 0, Math.PI*2);
+      ctx.fill();
+
+      // small shine
+      ctx.beginPath();
+      ctx.fillStyle = "rgba(255,255,255,0.18)";
+      ctx.arc(it.x - it.r*0.3, it.y - it.r*0.3, it.r*0.35, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    function gameOver(){
+      if(score > best){
+        best = score;
+        localStorage.setItem("bestScore", String(best));
+        bestEl.textContent = best;
+      }
+      // quick message
+      setTimeout(() => {
+        alert("Game Over! Score: " + score);
+      }, 40);
+      reset();
+    }
+
+    function step(ts){
+      ctx.clearRect(0,0,W,H);
+      drawBackdrop();
+
+      // difficulty ramps
+      speedBoost = Math.min(3.0, score / 40);
+      spawnEvery = Math.max(260, 520 - score*3);
+
+      if(ts - lastSpawn > spawnEvery){
+        spawn();
+        lastSpawn = ts;
+      }
+
+      // update items
+      for(let i = items.length-1; i>=0; i--){
+        const it = items[i];
+        it.y += it.vy;
+
+        // collision
+        const d = dist(player.x, player.y, it.x, it.y);
+        if(d < player.r + it.r){
+          if(it.bomb){
+            lives -= 1;
+            livesEl.textContent = lives;
+            items.splice(i,1);
+            if(lives <= 0) gameOver();
+            continue;
+          }else{
+            score += 1;
+            scoreEl.textContent = score;
+            items.splice(i,1);
+            continue;
+          }
+        }
+
+        // missed
+        if(it.y > H + 40){
+          if(!it.bomb){
+            lives -= 1;
+            livesEl.textContent = lives;
+            if(lives <= 0) gameOver();
+          }
+          items.splice(i,1);
+        }
+      }
+
+      // draw items & player
+      for(const it of items) drawItem(it);
+      drawPlayer();
+
+      requestAnimationFrame(step);
+    }
+
+    function setPointer(x, y){
+      const rect = c.getBoundingClientRect();
+      const px = Math.max(18, Math.min(rect.width - 18, x - rect.left));
+      const py = Math.max(18, Math.min(rect.height - 18, y - rect.top));
+      player.x = px; player.y = py;
+    }
+
+    c.addEventListener("mousemove", (e)=> setPointer(e.clientX, e.clientY), {passive:true});
+    c.addEventListener("touchstart", (e)=> {
+      const t = e.touches[0]; if(!t) return;
+      setPointer(t.clientX, t.clientY);
+    }, {passive:true});
+    c.addEventListener("touchmove", (e)=> {
+      const t = e.touches[0]; if(!t) return;
+      setPointer(t.clientX, t.clientY);
+    }, {passive:true});
+
+    document.getElementById("restart").addEventListener("click", () => reset());
+
+    window.addEventListener("resize", resize);
+    resize();
+    reset();
+    requestAnimationFrame(step);
+  </script>
+</body>
+</html>
