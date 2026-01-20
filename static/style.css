@@ -9,9 +9,6 @@
 
   --btn1: #2f7bff;
   --btn2: #1f63d6;
-
-  --vio1: rgba(170,120,255,0.28);
-  --blu1: rgba(90,150,255,0.40);
 }
 
 *{ box-sizing:border-box; }
@@ -75,8 +72,6 @@ body{
   background: linear-gradient(180deg, rgba(12,20,35,.70), rgba(12,20,35,.22));
   border: 1px solid rgba(255,255,255,.14);
   box-shadow: 0 50px 140px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,255,255,.08);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
 }
 
 @keyframes floatIn{
@@ -84,26 +79,13 @@ body{
   to  { opacity:1; transform: translateY(0) scale(1); }
 }
 
-.enter-ring{
+.enter-glow{
   position:absolute;
   inset:-2px;
   border-radius: 36px;
   background:
     radial-gradient(560px 280px at 50% 8%, rgba(80,140,255,.34), transparent 60%),
     radial-gradient(760px 360px at 50% 120%, rgba(170,120,255,.16), transparent 65%);
-  pointer-events:none;
-}
-
-.enter-grid{
-  position:absolute;
-  inset: 0;
-  border-radius: 34px;
-  background:
-    linear-gradient(to right, rgba(255,255,255,.06) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255,255,255,.05) 1px, transparent 1px);
-  background-size: 44px 44px;
-  mask-image: radial-gradient(320px 200px at 50% 30%, rgba(0,0,0,.85), transparent 75%);
-  opacity: .22;
   pointer-events:none;
 }
 
@@ -206,6 +188,19 @@ body{
   -webkit-backdrop-filter: blur(16px);
 }
 
+/* simple nice border glow without mask */
+.card::after{
+  content:"";
+  position:absolute;
+  inset:-2px;
+  border-radius: 34px;
+  background: linear-gradient(120deg, rgba(90,150,255,.38), rgba(255,255,255,.08), rgba(170,120,255,.20));
+  filter: blur(10px);
+  opacity: .35;
+  pointer-events:none;
+  z-index: -1;
+}
+
 .card::before{
   content:"";
   position:absolute;
@@ -213,20 +208,6 @@ body{
   border-radius: 32px;
   background: radial-gradient(860px 280px at 50% 0%, rgba(255,255,255,.10), transparent 62%);
   pointer-events:none;
-}
-
-.card::after{
-  content:"";
-  position:absolute;
-  inset:-1px;
-  border-radius: 34px;
-  padding: 1px;
-  background: linear-gradient(120deg, var(--blu1), rgba(255,255,255,.08), var(--vio1));
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events:none;
-  opacity: .55;
 }
 
 /* brand */
@@ -367,7 +348,6 @@ body{
 /* mobile */
 @media (max-width: 520px){
   .card{ padding: 40px 22px 34px; border-radius: 26px; }
-  .card::before{ border-radius: 26px; }
   .avatar{ width: 70px; height: 70px; }
   .btn{ min-width: 220px; }
   .chip{ min-width: 220px; }
