@@ -3,37 +3,80 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>TopShop Deals – Click Rush</title>
+  <title>TopShop Deals – Space Runner</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+  <style>
+    /* Game page tweaks (keeps your global style.css look) */
+    body{ overflow:hidden; }
+    .hud{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap: 12px;
+      padding: 10px 6px 12px;
+      flex-wrap: wrap;
+      color: rgba(255,255,255,.80);
+      font-size: 14px;
+    }
+    .hud b{ color: rgba(255,255,255,.96); }
+    .hud .left{ display:flex; gap: 16px; flex-wrap: wrap; align-items:center; }
+    .hud .right{ display:flex; gap: 10px; flex-wrap: wrap; align-items:center; }
+    .mini{
+      padding: 10px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.07);
+      color: rgba(255,255,255,.92);
+      text-decoration:none;
+      font-weight: 900;
+      cursor:pointer;
+    }
+    .mini:hover{ filter: brightness(1.10); }
+    #game{
+      width: 100%;
+      height: min(600px, 72vh);
+      border-radius: 22px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.14);
+      display:block;
+    }
+    .hint{
+      margin-top: 10px;
+      color: rgba(255,255,255,.62);
+      font-size: 12px;
+      text-align:left;
+    }
+  </style>
 </head>
 <body>
+  <!-- same background vibe -->
   <canvas id="snow" aria-hidden="true"></canvas>
 
   <main class="center" style="z-index:1;">
-    <section class="card" style="padding:18px;">
-      <div class="gamebar">
-        <div class="stats">
-          <div>Time: <b id="time">30</b>s</div>
+    <section class="card" style="padding:18px; text-align:left;">
+      <div class="hud">
+        <div class="left">
           <div>Score: <b id="score">0</b></div>
           <div>Best: <b id="best">0</b></div>
+          <div>Status: <b id="status">Ready</b></div>
         </div>
-
-        <div class="actions">
+        <div class="right">
           <button class="mini" id="start" type="button">Start</button>
           <button class="mini" id="restart" type="button">Restart</button>
           <a class="mini" href="/">Atgal</a>
         </div>
       </div>
 
-      <canvas id="game" class="gamecanvas"></canvas>
-      <div class="gamehint">
-        Spausk <b>mėlynus</b> taikinius (+1). Venk <b>raudonų</b> bomb (−3). 30 sekundžių.
+      <canvas id="game"></canvas>
+      <div class="hint">
+        Valdymas: <b>Space</b> / <b>Click</b> / <b>Tap</b> — “šoktelėk” į viršų. Skrisk pro tarpus, neliesk sienų.
       </div>
     </section>
   </main>
 
   <script>
-    // --------- simple snow bg (light) ----------
+    // ---------- Background (light snow, same look) ----------
     const snow = document.getElementById("snow");
     const sctx = snow.getContext("2d");
     let SW=0, SH=0, sflakes=[];
@@ -82,272 +125,303 @@
     window.addEventListener("resize", sresize);
     sresize(); requestAnimationFrame(sdraw);
 
-    // --------- Click Rush game ----------
+    // ---------- Space Runner game ----------
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
 
     const scoreEl = document.getElementById("score");
-    const timeEl = document.getElementById("time");
     const bestEl = document.getElementById("best");
+    const statusEl = document.getElementById("status");
 
-    let W=0, H=0;
+    let W=0, H=0, dpr=1;
+
+    // Game state
     let running = false;
-    let score = 0;
-    let timeLeft = 30;
-    let lastTick = 0;
-    let spawnTimer = 0;
+    let gameOver = false;
 
-    let best = Number(localStorage.getItem("bestClickRush") || "0");
+    let score = 0;
+    let best = Number(localStorage.getItem("bestSpaceRunner") || "0");
     bestEl.textContent = best;
 
-    const targets = []; // {x,y,r,type,ttl,spawnAt}
+    // Player (ship)
+    const ship = {
+      x: 0, y: 0,
+      r: 14,
+      vy: 0
+    };
+
+    // Physics
+    const gravity = 0.55;
+    const jump = -8.6;
+
+    // Obstacles
+    let pipes = [];
+    let spawnT = 0;
 
     function resize(){
-      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
       const rect = canvas.getBoundingClientRect();
       canvas.width = Math.floor(rect.width * dpr);
       canvas.height = Math.floor(rect.height * dpr);
       ctx.setTransform(dpr,0,0,dpr,0,0);
       W = rect.width; H = rect.height;
+
+      ship.x = W * 0.28;
+      if (!ship.y) ship.y = H * 0.5;
     }
     window.addEventListener("resize", resize);
 
     function reset(){
       running = false;
+      gameOver = false;
       score = 0;
-      timeLeft = 30;
-      targets.length = 0;
+      pipes = [];
+      spawnT = 0;
+      ship.y = H * 0.5;
+      ship.vy = 0;
       scoreEl.textContent = score;
-      timeEl.textContent = timeLeft;
-      spawnTimer = 0;
-      lastTick = 0;
-      drawFrame(0);
+      statusEl.textContent = "Ready";
+      draw(performance.now());
     }
 
-    function rand(min,max){ return min + Math.random()*(max-min); }
+    function start(){
+      if (running) return;
+      running = true;
+      gameOver = false;
+      statusEl.textContent = "Go!";
+      if (pipes.length === 0) {
+        for (let i=0;i<2;i++) spawnPipe(i*220);
+      }
+    }
 
-    function spawn(){
-      const isBomb = Math.random() < 0.22;
-      const r = isBomb ? rand(18,26) : rand(18,30);
+    function die(){
+      running = false;
+      gameOver = true;
+      statusEl.textContent = "Game Over";
+      if(score > best){
+        best = score;
+        localStorage.setItem("bestSpaceRunner", String(best));
+        bestEl.textContent = best;
+      }
+    }
 
-      const x = rand(r+14, W - r - 14);
-      const y = rand(r+14, H - r - 14);
+    function flap(){
+      if (!running && !gameOver) start();
+      if (gameOver) { reset(); start(); }
+      ship.vy = jump;
+    }
 
-      // ttl shorter as time passes (harder)
-      const base = isBomb ? rand(650, 950) : rand(750, 1150);
-      const difficulty = 1 + (score / 40); // little ramp
-      const ttl = Math.max(420, base / difficulty);
+    function spawnPipe(extraX=0){
+      const gap = Math.max(140, 185 - score*2);          // harder with score
+      const pipeW = 62;
+      const margin = 42;
 
-      targets.push({
-        x, y, r,
-        type: isBomb ? "bomb" : "good",
-        ttl,
-        born: performance.now()
+      const topH = Math.floor(margin + Math.random() * (H - gap - margin*2));
+      const x = W + 80 + extraX;
+
+      pipes.push({
+        x, w: pipeW,
+        topH,
+        gap,
+        passed: false
       });
     }
 
-    function hitTest(px, py, t){
-      const dx = px - t.x, dy = py - t.y;
-      return Math.hypot(dx,dy) <= t.r;
-    }
-
-    function onClick(px, py){
-      if(!running) return;
-
-      for(let i = targets.length-1; i>=0; i--){
-        const t = targets[i];
-        if(hitTest(px, py, t)){
-          if(t.type === "good") score += 1;
-          else score -= 3;
-
-          targets.splice(i,1);
-          scoreEl.textContent = score;
-          // instant feedback: small burst
-          burst(px, py, t.type);
-          return;
-        }
-      }
-    }
-
-    // tiny particle burst
-    const particles = []; // {x,y,vx,vy,life,kind}
-    function burst(x,y,kind){
-      const n = 10;
-      for(let i=0;i<n;i++){
-        particles.push({
-          x, y,
-          vx: rand(-1.6,1.6),
-          vy: rand(-1.6,1.6),
-          life: rand(240,420),
-          born: performance.now(),
-          kind
-        });
-      }
+    function circleRectCollide(cx, cy, r, rx, ry, rw, rh){
+      const nx = Math.max(rx, Math.min(cx, rx+rw));
+      const ny = Math.max(ry, Math.min(cy, ry+rh));
+      const dx = cx - nx;
+      const dy = cy - ny;
+      return (dx*dx + dy*dy) <= r*r;
     }
 
     function drawBackground(){
-      // subtle inner glow in game area
+      // inner game glow
       ctx.clearRect(0,0,W,H);
-      ctx.fillStyle = "rgba(0,0,0,0.14)";
+
+      ctx.fillStyle = "rgba(0,0,0,0.10)";
       ctx.fillRect(0,0,W,H);
 
-      const g = ctx.createRadialGradient(W*0.5, H*0.2, 0, W*0.5, H*0.2, Math.max(W,H)*0.9);
-      g.addColorStop(0,"rgba(60,130,255,0.14)");
+      const g = ctx.createRadialGradient(W*0.55,H*0.22,0,W*0.55,H*0.22,Math.max(W,H)*0.85);
+      g.addColorStop(0,"rgba(60,130,255,0.16)");
       g.addColorStop(1,"rgba(0,0,0,0)");
       ctx.fillStyle = g;
       ctx.fillRect(0,0,W,H);
 
-      // faint vignette
-      const v = ctx.createRadialGradient(W*0.5, H*0.55, Math.min(W,H)*0.25, W*0.5, H*0.55, Math.max(W,H)*0.75);
-      v.addColorStop(0,"rgba(0,0,0,0)");
-      v.addColorStop(1,"rgba(0,0,0,0.22)");
-      ctx.fillStyle = v;
-      ctx.fillRect(0,0,W,H);
+      // subtle stars
+      ctx.fillStyle = "rgba(255,255,255,0.05)";
+      for(let i=0;i<30;i++){
+        const x = (i*97) % W;
+        const y = (i*53) % H;
+        ctx.fillRect(x,y,2,2);
+      }
     }
 
-    function drawTarget(t, now){
-      const age = now - t.born;
-      const left = Math.max(0, t.ttl - age);
-      const p = left / t.ttl; // 1 -> 0
+    function drawShip(){
+      // ship body
+      ctx.save();
+      ctx.translate(ship.x, ship.y);
 
-      // slight pop animation at spawn
-      const pop = Math.min(1, age / 120);
-      const rr = t.r * (0.85 + 0.15*pop);
+      const tilt = Math.max(-0.7, Math.min(0.7, ship.vy / 10));
+      ctx.rotate(tilt);
 
-      // ring
+      // glow
       ctx.beginPath();
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = t.type === "good" ? "rgba(100,170,255,0.65)" : "rgba(255,90,90,0.62)";
-      ctx.arc(t.x, t.y, rr+8, 0, Math.PI*2);
-      ctx.stroke();
+      ctx.fillStyle = "rgba(80,140,255,0.20)";
+      ctx.arc(0,0, ship.r+10, 0, Math.PI*2);
+      ctx.fill();
 
       // main circle
       ctx.beginPath();
-      ctx.fillStyle = t.type === "good" ? "rgba(110,185,255,0.92)" : "rgba(255,90,90,0.92)";
-      ctx.arc(t.x, t.y, rr, 0, Math.PI*2);
+      ctx.fillStyle = "rgba(255,255,255,0.92)";
+      ctx.arc(0,0, ship.r, 0, Math.PI*2);
       ctx.fill();
 
-      // shine
+      // window
       ctx.beginPath();
-      ctx.fillStyle = "rgba(255,255,255,0.20)";
-      ctx.arc(t.x - rr*0.35, t.y - rr*0.35, rr*0.35, 0, Math.PI*2);
+      ctx.fillStyle = "rgba(60,130,255,0.55)";
+      ctx.arc(ship.r*0.25, -ship.r*0.15, ship.r*0.45, 0, Math.PI*2);
       ctx.fill();
 
-      // timer arc
-      ctx.beginPath();
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = "rgba(255,255,255,0.28)";
-      ctx.arc(t.x, t.y, rr+14, -Math.PI/2, (-Math.PI/2) + (Math.PI*2*p));
-      ctx.stroke();
+      ctx.restore();
     }
 
-    function drawParticles(now){
-      for(let i=particles.length-1;i>=0;i--){
-        const p = particles[i];
-        const age = now - p.born;
-        if(age > p.life){ particles.splice(i,1); continue; }
-        const k = 1 - (age/p.life);
-        p.x += p.vx;
-        p.y += p.vy;
-        ctx.beginPath();
-        ctx.fillStyle = p.kind === "good" ? `rgba(170,220,255,${0.45*k})` : `rgba(255,160,160,${0.45*k})`;
-        ctx.arc(p.x, p.y, 2.2, 0, Math.PI*2);
-        ctx.fill();
+    function drawPipe(p){
+      // nice gradient pipe
+      const x = p.x;
+      const w = p.w;
+
+      // top rect
+      const topRect = {x, y:0, w, h:p.topH};
+      const botY = p.topH + p.gap;
+      const botRect = {x, y:botY, w, h: H - botY};
+
+      const grad = ctx.createLinearGradient(x,0,x+w,0);
+      grad.addColorStop(0, "rgba(130,190,255,0.22)");
+      grad.addColorStop(0.5, "rgba(255,255,255,0.12)");
+      grad.addColorStop(1, "rgba(130,190,255,0.18)");
+
+      ctx.fillStyle = grad;
+
+      // top
+      ctx.fillRect(topRect.x, topRect.y, topRect.w, topRect.h);
+      // bottom
+      ctx.fillRect(botRect.x, botRect.y, botRect.w, botRect.h);
+
+      // edges
+      ctx.strokeStyle = "rgba(255,255,255,0.12)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(topRect.x+0.5, topRect.y+0.5, topRect.w-1, topRect.h-1);
+      ctx.strokeRect(botRect.x+0.5, botRect.y+0.5, botRect.w-1, botRect.h-1);
+
+      // gap glow
+      ctx.fillStyle = "rgba(60,130,255,0.08)";
+      ctx.fillRect(x, p.topH, w, p.gap);
+    }
+
+    function drawOverlayText(){
+      if(!running && !gameOver){
+        ctx.fillStyle = "rgba(255,255,255,0.80)";
+        ctx.font = "900 18px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("SPACE / CLICK / TAP — start & jump", W/2, H/2 - 6);
+        ctx.fillStyle = "rgba(255,255,255,0.55)";
+        ctx.font = "600 13px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial";
+        ctx.fillText("Praskrisk pro tarpus. Kuo daugiau score — tuo sunkiau.", W/2, H/2 + 18);
+      }
+      if(gameOver){
+        ctx.fillStyle = "rgba(255,255,255,0.86)";
+        ctx.font = "950 22px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("GAME OVER", W/2, H/2 - 10);
+        ctx.fillStyle = "rgba(255,255,255,0.55)";
+        ctx.font = "700 13px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial";
+        ctx.fillText("Paspausk Space / Click — restart", W/2, H/2 + 16);
       }
     }
 
-    function drawFrame(now){
+    let last = 0;
+
+    function update(dt){
+      // ship physics
+      ship.vy += gravity;
+      ship.y += ship.vy;
+
+      // bounds
+      if(ship.y - ship.r < 0) die();
+      if(ship.y + ship.r > H) die();
+
+      // pipes move
+      const speed = 3.0 + Math.min(3.0, score/12); // gets faster
+      for(const p of pipes){
+        p.x -= speed;
+
+        // scoring
+        if(!p.passed && p.x + p.w < ship.x){
+          p.passed = true;
+          score += 1;
+          scoreEl.textContent = score;
+        }
+
+        // collision with top and bottom pipes
+        const topHit = circleRectCollide(ship.x, ship.y, ship.r, p.x, 0, p.w, p.topH);
+        const botY = p.topH + p.gap;
+        const botHit = circleRectCollide(ship.x, ship.y, ship.r, p.x, botY, p.w, H - botY);
+        if(topHit || botHit) die();
+      }
+
+      // remove offscreen
+      pipes = pipes.filter(p => p.x + p.w > -80);
+
+      // spawn
+      spawnT += dt;
+      const spawnEvery = Math.max(1150, 1550 - score*20);
+      if(spawnT > spawnEvery){
+        spawnPipe(0);
+        spawnT = 0;
+      }
+    }
+
+    function draw(now){
       drawBackground();
 
-      // remove expired targets (miss)
-      for(let i=targets.length-1;i>=0;i--){
-        const t = targets[i];
-        if(now - t.born > t.ttl){
-          targets.splice(i,1);
-        }
-      }
+      // pipes
+      for(const p of pipes) drawPipe(p);
 
-      for(const t of targets) drawTarget(t, now);
-      drawParticles(now);
+      // ship
+      drawShip();
 
-      // overlay instructions if not running
-      if(!running){
-        ctx.fillStyle = "rgba(255,255,255,0.78)";
-        ctx.font = "700 18px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial";
-        ctx.textAlign = "center";
-        ctx.fillText("Spausk START ir rink taškus!", W/2, H/2 - 8);
-        ctx.fillStyle = "rgba(255,255,255,0.55)";
-        ctx.font = "500 13px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial";
-        ctx.fillText("Mėlyni +1, raudoni −3. 30 sekundžių.", W/2, H/2 + 16);
-      }
-    }
-
-    function loop(now){
-      drawFrame(now);
-
-      if(running){
-        // spawn rhythm
-        spawnTimer += (now - (lastTick || now));
-        const spawnEvery = Math.max(280, 520 - Math.max(0, score)*2); // faster with score
-        while(spawnTimer > spawnEvery){
-          spawn();
-          spawnTimer -= spawnEvery;
-        }
-
-        // timer
-        if(!lastTick) lastTick = now;
-        if(now - lastTick >= 1000){
-          const steps = Math.floor((now - lastTick) / 1000);
-          timeLeft = Math.max(0, timeLeft - steps);
-          timeEl.textContent = timeLeft;
-          lastTick += steps * 1000;
-
-          if(timeLeft === 0){
-            running = false;
-            targets.length = 0;
-            if(score > best){
-              best = score;
-              localStorage.setItem("bestClickRush", String(best));
-              bestEl.textContent = best;
-            }
-          }
-        }
-      }
+      // overlay texts
+      drawOverlayText();
 
       requestAnimationFrame(loop);
     }
 
-    function start(){
-      if(running) return;
-      reset();
-      running = true;
-      lastTick = performance.now();
-      spawnTimer = 0;
-      // initial few spawns
-      for(let i=0;i<3;i++) spawn();
-    }
+    function loop(now){
+      if(!last) last = now;
+      const dt = Math.min(40, now - last);
+      last = now;
 
-    // pointer handling
-    function getPos(ev){
-      const rect = canvas.getBoundingClientRect();
-      if(ev.touches && ev.touches[0]){
-        return { x: ev.touches[0].clientX - rect.left, y: ev.touches[0].clientY - rect.top };
+      if(running && !gameOver){
+        update(dt);
       }
-      return { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+
+      draw(now);
     }
 
-    canvas.addEventListener("click", (e)=> {
-      const rect = canvas.getBoundingClientRect();
-      onClick(e.clientX - rect.left, e.clientY - rect.top);
+    // Input
+    window.addEventListener("keydown", (e)=>{
+      if(e.code === "Space"){
+        e.preventDefault();
+        flap();
+      }
     });
 
-    canvas.addEventListener("touchstart", (e)=> {
-      const p = getPos(e);
-      onClick(p.x, p.y);
-    }, {passive:true});
+    canvas.addEventListener("mousedown", ()=> flap());
+    canvas.addEventListener("touchstart", ()=> flap(), {passive:true});
 
-    document.getElementById("start").addEventListener("click", start);
-    document.getElementById("restart").addEventListener("click", reset);
+    document.getElementById("start").addEventListener("click", ()=> { start(); flap(); });
+    document.getElementById("restart").addEventListener("click", ()=> { reset(); start(); });
 
     resize();
     reset();
