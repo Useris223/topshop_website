@@ -26,14 +26,26 @@ body{
   z-index: 0;
 }
 
-/* ---------- Overlay (click to enter) ---------- */
+/* Hide the youtube iframe (audio only) */
+.yt{
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  left: -10px;
+  top: -10px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ---------- Overlay (new click to enter) ---------- */
 .overlay{
   position: fixed;
   inset: 0;
   z-index: 5;
   display: grid;
   place-items: center;
-  background: rgba(0,0,0,.46);
+  background: rgba(0,0,0,.44);
   backdrop-filter: blur(7px);
   -webkit-backdrop-filter: blur(7px);
   cursor: pointer;
@@ -46,81 +58,86 @@ body{
   transition: opacity .28s ease;
 }
 
-.enter-card{
+.enter-wrap{
   width: min(520px, 92vw);
-  border-radius: 26px;
-  padding: 26px 26px 22px;
+  padding: 28px 26px 22px;
+  border-radius: 30px;
+  text-align: center;
   position: relative;
 
-  background: linear-gradient(180deg, rgba(12,20,35,.62), rgba(12,20,35,.26));
+  background: linear-gradient(180deg, rgba(12,20,35,.64), rgba(12,20,35,.22));
   border: 1px solid rgba(255,255,255,.14);
-  box-shadow: 0 35px 90px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.08);
+  box-shadow: 0 40px 110px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.08);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
 }
 
-.enter-glow{
+.enter-ring{
   position:absolute;
   inset:-2px;
-  border-radius: 28px;
-  background: radial-gradient(420px 200px at 50% 10%, rgba(80,140,255,.28), transparent 60%);
+  border-radius: 32px;
+  background:
+    radial-gradient(420px 210px at 50% 12%, rgba(80,140,255,.28), transparent 60%),
+    radial-gradient(520px 260px at 50% 120%, rgba(50,120,255,.14), transparent 65%);
   pointer-events:none;
-  filter: blur(1px);
 }
 
-.enter-top{
-  display:flex;
-  align-items:center;
-  gap: 10px;
-  color: rgba(255,255,255,.78);
-  font-size: 14px;
-  margin-bottom: 18px;
-  position:relative;
-  z-index:1;
+.enter-logo{
+  width: 96px;
+  height: 96px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 1px solid rgba(255,255,255,.18);
+  box-shadow: 0 18px 60px rgba(0,0,0,.55), 0 0 26px rgba(80,140,255,.18);
+  background: rgba(255,255,255,.08);
+  position: relative;
+  z-index: 1;
 }
 
-.enter-dot{
-  width:10px;height:10px;border-radius:999px;
-  background: rgba(255,255,255,.18);
-  border:1px solid rgba(255,255,255,.18);
-  box-shadow: 0 0 18px rgba(255,255,255,.10);
-}
-
-.enter-main{
-  text-align:center;
-  padding: 6px 0 4px;
-  position:relative;
-  z-index:1;
-}
-
-.enter-big{
+.enter-name{
+  margin-top: 14px;
   font-weight: 950;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  font-size: 26px;
-  line-height: 1.1;
-  text-shadow: 0 12px 30px rgba(0,0,0,.45);
-  animation: pulse 1.8s ease-in-out infinite;
+  letter-spacing: 1.2px;
+  font-size: 22px;
+  position: relative;
+  z-index: 1;
 }
 
-.enter-sub{
-  margin-top: 10px;
-  color: rgba(255,255,255,.72);
+.enter-tag{
+  margin-top: 6px;
+  color: rgba(255,255,255,.66);
   font-size: 13px;
+  position: relative;
+  z-index: 1;
 }
+
+.enter-btn{
+  margin-top: 18px;
+  width: min(320px, 92%);
+  padding: 14px 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: linear-gradient(180deg, var(--btn1), var(--btn2));
+  color: #fff;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  box-shadow: 0 18px 40px rgba(47,123,255,.25);
+  cursor: pointer;
+  transition: transform .12s ease, filter .12s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.enter-btn:hover{ transform: translateY(-1px); filter: brightness(1.06); }
+.enter-btn:active{ transform: translateY(0px); filter: brightness(.98); }
 
 .enter-hint{
-  margin-top: 16px;
-  text-align:center;
-  color: rgba(255,255,255,.55);
+  margin-top: 12px;
+  color: rgba(255,255,255,.52);
   font-size: 12px;
-  position:relative;
-  z-index:1;
-}
-
-@keyframes pulse{
-  0%, 100% { transform: translateY(0); filter: brightness(1); }
-  50%      { transform: translateY(-2px); filter: brightness(1.08); }
+  position: relative;
+  z-index: 1;
 }
 
 /* ---------- Main content ---------- */
@@ -173,24 +190,24 @@ body{
   pointer-events:none;
 }
 
-/* Brand line with avatar */
+/* Brand line with BIGGER avatar (logo didesnis) */
 .brand{
   display:flex;
   align-items:center;
   justify-content:center;
-  gap: 10px;
+  gap: 12px;
   margin-bottom: 22px;
   color: rgba(255,255,255,.82);
   font-size: 14px;
 }
 
 .avatar{
-  width: 30px;
-  height: 30px;
+  width: 46px;          /* <- didesnis */
+  height: 46px;         /* <- didesnis */
   border-radius: 999px;
   object-fit: cover;
   border: 1px solid rgba(255,255,255,.18);
-  box-shadow: 0 0 18px rgba(255,255,255,.10);
+  box-shadow: 0 0 22px rgba(255,255,255,.10);
   background: rgba(255,255,255,.08);
 }
 
