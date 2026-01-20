@@ -1,153 +1,96 @@
 :root{
-  --bgA:#06122a;
-  --bgB:#050914;
-  --card: rgba(12, 20, 35, .55);
-  --card2: rgba(12, 20, 35, .22);
-  --stroke: rgba(255,255,255,.12);
-  --text: rgba(255,255,255,.92);
-  --muted: rgba(255,255,255,.62);
-  --btn1:#2f7bff;
-  --btn2:#1f63d6;
+  --cardA: rgba(10, 16, 28, 0.58);
+  --cardB: rgba(10, 16, 28, 0.22);
+  --stroke: rgba(255,255,255,0.12);
+  --text: rgba(255,255,255,0.92);
+  --muted: rgba(255,255,255,0.65);
+  --btn1: #2f7bff;
+  --btn2: #1f63d6;
 }
 
 *{ box-sizing:border-box; }
 html,body{ height:100%; }
-
 body{
   margin:0;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans";
   color: var(--text);
   overflow:hidden;
-  background: #030611;
+  background:#02040c;
 }
 
-/* Background gradient like screenshot */
-.bg{
-  position:fixed;
-  inset:0;
-  background:
-    radial-gradient(900px 520px at 15% 30%, rgba(35, 110, 255, .35), transparent 58%),
-    radial-gradient(1000px 600px at 80% 20%, rgba(10, 30, 70, .70), transparent 60%),
-    linear-gradient(130deg, var(--bgA), var(--bgB) 60%, #02030a);
+/* Canvas behind everything */
+#stars{
+  position: fixed;
+  inset: 0;
+  z-index: 0;
 }
 
-/* Stars: multi-layer, different sizes/opacities */
-.stars{
-  position:fixed;
-  inset:0;
-  pointer-events:none;
-  background-repeat: repeat;
-  opacity:.95;
-  filter: drop-shadow(0 0 6px rgba(255,255,255,.10));
-}
-
-.s1{
-  background-image:
-    radial-gradient(2px 2px at 20px 40px, rgba(255,255,255,.9) 50%, transparent 52%),
-    radial-gradient(1px 1px at 90px 140px, rgba(255,255,255,.8) 50%, transparent 52%),
-    radial-gradient(2px 2px at 170px 70px, rgba(255,255,255,.85) 50%, transparent 52%),
-    radial-gradient(1px 1px at 230px 160px, rgba(255,255,255,.7) 50%, transparent 52%),
-    radial-gradient(2px 2px at 310px 110px, rgba(255,255,255,.85) 50%, transparent 52%);
-  background-size: 340px 220px;
-  animation: drift1 18s linear infinite;
-}
-
-.s2{
-  opacity:.65;
-  background-image:
-    radial-gradient(1px 1px at 30px 80px, rgba(255,255,255,.75) 50%, transparent 52%),
-    radial-gradient(1px 1px at 140px 30px, rgba(255,255,255,.7) 50%, transparent 52%),
-    radial-gradient(1px 1px at 200px 120px, rgba(255,255,255,.65) 50%, transparent 52%),
-    radial-gradient(1px 1px at 280px 60px, rgba(255,255,255,.7) 50%, transparent 52%),
-    radial-gradient(1px 1px at 330px 180px, rgba(255,255,255,.65) 50%, transparent 52%);
-  background-size: 360px 260px;
-  animation: drift2 26s linear infinite;
-}
-
-.s3{
-  opacity:.40;
-  background-image:
-    radial-gradient(1px 1px at 60px 40px, rgba(255,255,255,.65) 50%, transparent 52%),
-    radial-gradient(1px 1px at 160px 160px, rgba(255,255,255,.6) 50%, transparent 52%),
-    radial-gradient(1px 1px at 260px 90px, rgba(255,255,255,.55) 50%, transparent 52%),
-    radial-gradient(1px 1px at 320px 30px, rgba(255,255,255,.6) 50%, transparent 52%);
-  background-size: 420px 300px;
-  animation: drift3 40s linear infinite;
-}
-
-@keyframes drift1 { from{ transform:translateY(0);} to{ transform:translateY(-70px);} }
-@keyframes drift2 { from{ transform:translateY(0);} to{ transform:translateY(-110px);} }
-@keyframes drift3 { from{ transform:translateY(0);} to{ transform:translateY(-160px);} }
-
-/* Center card like screenshot */
 .center{
   min-height:100vh;
   display:grid;
   place-items:center;
-  padding:24px;
-  position:relative;
-  z-index:2;
+  padding: 24px;
+  position: relative;
+  z-index: 1;
 }
 
-.glass{
-  width:min(980px, 92vw);
-  padding:52px 54px 48px;
-  border-radius:28px;
+/* Glass card like screenshot */
+.card{
+  width: min(980px, 92vw);
+  padding: 56px 56px 50px;
+  border-radius: 28px;
   text-align:center;
 
-  background: linear-gradient(180deg, var(--card), var(--card2));
-  border:1px solid var(--stroke);
+  background: linear-gradient(180deg, var(--cardA), var(--cardB));
+  border: 1px solid var(--stroke);
   box-shadow:
-    0 30px 80px rgba(0,0,0,.55),
+    0 28px 75px rgba(0,0,0,.55),
     inset 0 1px 0 rgba(255,255,255,.08);
+
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  position:relative;
+  position: relative;
 }
 
-/* Slight inner highlight */
-.glass::before{
+/* faint inner highlight at top */
+.card::before{
   content:"";
   position:absolute;
   inset:0;
-  border-radius:28px;
-  background:
-    radial-gradient(600px 220px at 50% 0%, rgba(255,255,255,.08), transparent 60%);
+  border-radius: 28px;
+  background: radial-gradient(700px 240px at 50% 0%, rgba(255,255,255,.09), transparent 60%);
   pointer-events:none;
 }
 
-/* Top small brand line */
-.topline{
+.brand{
   display:flex;
   align-items:center;
   justify-content:center;
-  gap:10px;
-  margin-bottom:22px;
+  gap: 10px;
+  margin-bottom: 22px;
   color: rgba(255,255,255,.72);
-  font-size:14px;
+  font-size: 14px;
 }
 
-.tiny-icon{
-  width:18px;
-  height:18px;
-  border-radius:4px;
+.brand-icon{
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
   background: rgba(255,255,255,.10);
-  border:1px solid rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.12);
   box-shadow: 0 0 18px rgba(255,255,255,.10);
 }
 
-/* Main title */
 .title{
   margin: 0 0 14px;
-  font-weight:900;
-  letter-spacing:2px;
-  font-size: clamp(30px, 4.2vw, 52px);
+  font-weight: 900;
+  letter-spacing: 2px;
   text-transform: uppercase;
+  font-size: clamp(30px, 4.2vw, 52px);
 }
 
-.warn{ margin-right:14px; }
+.warn{ margin-right: 14px; }
 
-/* Description */
 .desc{
   margin: 0 auto 30px;
   max-width: 680px;
@@ -156,7 +99,6 @@ body{
   font-size: 15px;
 }
 
-/* Button like screenshot */
 .btn{
   display:inline-flex;
   align-items:center;
@@ -177,7 +119,7 @@ body{
 .btn:active{ transform: translateY(0px); filter: brightness(.98); }
 
 @media (max-width: 520px){
-  .glass{ padding: 40px 22px 34px; border-radius: 22px; }
-  .glass::before{ border-radius: 22px; }
+  .card{ padding: 40px 22px 34px; border-radius: 22px; }
+  .card::before{ border-radius: 22px; }
   .btn{ min-width: 230px; }
 }
