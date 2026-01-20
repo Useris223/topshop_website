@@ -10,7 +10,7 @@ app = Flask(__name__)
 DB_PATH = os.path.join(os.path.dirname(__file__), "stats.db")
 LOCK = threading.Lock()
 
-# Online tracking (RAM): counts users active in last 30s
+# Online tracking (RAM): aktyvūs per paskutines 30s
 LAST_SEEN = {}  # sid -> last_seen_ts
 ONLINE_WINDOW_SEC = 30
 
