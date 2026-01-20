@@ -12,16 +12,27 @@
 
   <!-- Click to enter overlay -->
   <div class="overlay" id="overlay" role="button" tabindex="0" aria-label="Click to enter">
-    <div class="overlay-inner">
-      <div class="overlay-pill">Click to enter</div>
-      <div class="overlay-sub">Paspausk, kad įeitum</div>
+    <div class="enter-card">
+      <div class="enter-glow" aria-hidden="true"></div>
+
+      <div class="enter-top">
+        <div class="enter-dot" aria-hidden="true"></div>
+        <div class="enter-title">TopShop Deals</div>
+      </div>
+
+      <div class="enter-main">
+        <div class="enter-big">Click to enter</div>
+        <div class="enter-sub">Paspausk, kad įeitum</div>
+      </div>
+
+      <div class="enter-hint">Enter / Space taip pat veikia</div>
     </div>
   </div>
 
   <main class="center" id="main" data-hidden="true">
     <section class="card">
       <div class="brand">
-        <img class="avatar" id="avatar" alt="Logo" />
+        <img class="avatar" id="avatar" alt="TopShop Deals logo" />
         <span class="toptext">TopShop Deals</span>
       </div>
 
@@ -32,21 +43,33 @@
 
       <p class="desc">
         Šiuo metu svetainė yra kuriama.<br>
-        Norint užsisakyti – susisiekite su mumis.
+        Norint užsisakyti – susisiekite su mumis Discord serveryje.
       </p>
 
-      <a class="btn" href="/" onclick="return false;">
+      <a class="btn" href="https://discord.gg/hup2TpqkUT" target="_blank" rel="noopener">
         Susisiekti
       </a>
     </section>
   </main>
 
   <script>
-    // ---------- Avatar from URL param (?img=...) ----------
+    // ---------- Avatar ----------
+    // Default: tavo Discord CDN paveiksliukas (veiks net su ?ex=...&hm=...)
+    // Jei nori pakeisti per URL: ?img=https://....
+    const DEFAULT_AVATAR =
+      "https://cdn.discordapp.com/attachments/1445929063872204800/1459177866968436749/ChatGPT_Image_Jan_9_2026_03_31_44_PM.png?ex=69702c89&is=696edb09&hm=c4a8c6c4816de81f6710670cac34157517d77a0911587a5190e08acffff56cff&";
+
     const params = new URLSearchParams(location.search);
-    const imgUrl = params.get("img") || "https://upload.wikimedia.org/wikipedia/commons/5/59/Empty.png";
+    const imgUrl = params.get("img") || DEFAULT_AVATAR;
+
     const avatar = document.getElementById("avatar");
+    avatar.referrerPolicy = "no-referrer"; // padeda kai kurie hostai blokuoja referrer
     avatar.src = imgUrl;
+
+    // jei nepavyksta užkrauti, krentam į default (kad nebūtų "broken image")
+    avatar.addEventListener("error", () => {
+      avatar.src = DEFAULT_AVATAR;
+    });
 
     // ---------- Click to enter overlay ----------
     const overlay = document.getElementById("overlay");
@@ -55,7 +78,7 @@
     function enter() {
       overlay.classList.add("hide");
       main.dataset.hidden = "false";
-      startSnow(); // start animation only after click
+      startSnow();
     }
     overlay.addEventListener("click", enter);
     overlay.addEventListener("keydown", (e) => {
@@ -80,27 +103,25 @@
       W = window.innerWidth;
       H = window.innerHeight;
 
-      // rebuild flakes
-      const count = Math.floor((W * H) / 12000); // density
+      const count = Math.floor((W * H) / 11000);
       flakes = Array.from({ length: count }, () => makeFlake(true));
     }
 
     function makeFlake(initial=false) {
-      const size = 0.8 + Math.random() * 2.2; // small like screenshot
+      const size = 0.8 + Math.random() * 2.4;
       return {
         x: Math.random() * W,
-        y: initial ? Math.random() * H : -10 - Math.random() * 120,
+        y: initial ? Math.random() * H : -10 - Math.random() * 140,
         r: size,
-        vy: 0.6 + Math.random() * 1.6,
-        vx: -0.4 + Math.random() * 0.8,
-        a: 0.35 + Math.random() * 0.55,
+        vy: 0.65 + Math.random() * 1.8,
+        vx: -0.35 + Math.random() * 0.7,
+        a: 0.25 + Math.random() * 0.65,
         wob: Math.random() * Math.PI * 2,
-        wobSpd: 0.003 + Math.random() * 0.01
+        wobSpd: 0.004 + Math.random() * 0.012
       };
     }
 
     function drawBackground() {
-      // same vibe as screenshot (dark blue gradient)
       const g = ctx.createLinearGradient(0, 0, W, H);
       g.addColorStop(0.00, "#071c3e");
       g.addColorStop(0.35, "#061632");
@@ -109,7 +130,6 @@
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
 
-      // glow top-left
       const r = ctx.createRadialGradient(W*0.18, H*0.25, 0, W*0.18, H*0.25, Math.max(W,H)*0.6);
       r.addColorStop(0, "rgba(60,130,255,0.22)");
       r.addColorStop(1, "rgba(60,130,255,0)");
@@ -122,19 +142,17 @@
 
       drawBackground();
 
-      // snow
       for (let i = 0; i < flakes.length; i++) {
         const f = flakes[i];
         f.wob += f.wobSpd * (t || 0);
-        const drift = Math.sin(f.wob) * 0.4;
+        const drift = Math.sin(f.wob) * 0.45;
 
         f.x += (f.vx + drift);
         f.y += f.vy;
 
-        // wrap
-        if (f.y > H + 20) flakes[i] = makeFlake(false);
-        if (f.x < -30) f.x = W + 30;
-        if (f.x > W + 30) f.x = -30;
+        if (f.y > H + 25) flakes[i] = makeFlake(false);
+        if (f.x < -35) f.x = W + 35;
+        if (f.x > W + 35) f.x = -35;
 
         ctx.beginPath();
         ctx.fillStyle = `rgba(255,255,255,${f.a})`;
@@ -157,7 +175,7 @@
       resize();
     });
 
-    // draw background even before click
+    // background matosi ir prieš enter
     resize();
     drawBackground();
   </script>
