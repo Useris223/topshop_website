@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="lt">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Discord Turgelis</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="stars" aria-hidden="true"></div>
+
+  <main class="wrap">
+    <section class="card">
+      <div class="brand">
+        <div class="brand-dot"></div>
+        <div class="brand-name">Discord Turgelis</div>
+      </div>
+
+      <h1 class="title">
+        <span class="warn">⚠️</span>
+        SVETAINĖ KURIAMA
+      </h1>
+
+      <p class="desc">
+        Šiuo metu svetainė yra kuriama.<br>
+        Norint užsisakyti – sukurkite ticket mūsų Discord serveryje.
+      </p>
+
+      <a class="btn" href="DISCORD_INVITE_URL" target="_blank" rel="noopener">
+        Prisijungti į Discord
+      </a>
+    </section>
+  </main>
+</body>
+</html>
