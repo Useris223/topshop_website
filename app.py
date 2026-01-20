@@ -10,9 +10,11 @@ app = Flask(__name__)
 DB_PATH = os.path.join(os.path.dirname(__file__), "stats.db")
 LOCK = threading.Lock()
 
-# Online tracking (in-memory; resets on restart, that's OK for "online now")
-LAST_SEEN = {}  # sid -> last_seen_ts (unix)
+# Online tracking (RAM): counts users active in last 30s
+LAST_SEEN = {}  # sid -> last_seen_ts
 ONLINE_WINDOW_SEC = 30
+
+_INIT_DONE = False
 
 
 def db_connect():
@@ -36,7 +38,16 @@ def db_init():
         conn.close()
 
 
-def get_total_views():
+def ensure_init():
+    global _INIT_DONE
+    if _INIT_DONE:
+        return
+    db_init()
+    _INIT_DONE = True
+
+
+def get_total_views() -> int:
+    ensure_init()
     with LOCK:
         conn = db_connect()
         cur = conn.cursor()
@@ -47,6 +58,7 @@ def get_total_views():
 
 
 def inc_total_views():
+    ensure_init()
     with LOCK:
         conn = db_connect()
         cur = conn.cursor()
@@ -55,7 +67,7 @@ def inc_total_views():
         conn.close()
 
 
-def get_sid():
+def get_sid() -> str:
     sid = request.cookies.get("sid")
     if not sid or len(sid) < 16:
         sid = secrets.token_urlsafe(16)
@@ -64,18 +76,11 @@ def get_sid():
 
 def mark_seen(sid: str):
     now = int(time.time())
-    # cleanup + mark
     LAST_SEEN[sid] = now
     cutoff = now - ONLINE_WINDOW_SEC
-    # cleanup old
     for k, ts in list(LAST_SEEN.items()):
         if ts < cutoff:
             LAST_SEEN.pop(k, None)
-
-
-@app.before_first_request
-def startup():
-    db_init()
 
 
 @app.get("/")
@@ -85,18 +90,6 @@ def home():
     mark_seen(sid)
 
     resp = make_response(render_template("index.html"))
-    # 30 days cookie
-    resp.set_cookie("sid", sid, max_age=60 * 60 * 24 * 30, httponly=True, samesite="Lax")
-    return resp
-
-
-@app.get("/game")
-def game():
-    # game page optional: also track online here
-    sid = get_sid()
-    mark_seen(sid)
-
-    resp = make_response(render_template("game.html"))
     resp.set_cookie("sid", sid, max_age=60 * 60 * 24 * 30, httponly=True, samesite="Lax")
     return resp
 
@@ -105,6 +98,7 @@ def game():
 def ping():
     sid = get_sid()
     mark_seen(sid)
+
     resp = jsonify({"ok": True})
     resp.set_cookie("sid", sid, max_age=60 * 60 * 24 * 30, httponly=True, samesite="Lax")
     return resp
@@ -112,7 +106,6 @@ def ping():
 
 @app.get("/stats")
 def stats():
-    # cleanup + compute online
     sid = get_sid()
     mark_seen(sid)
 
